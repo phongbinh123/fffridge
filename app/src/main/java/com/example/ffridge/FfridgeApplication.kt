@@ -1,9 +1,7 @@
 package com.example.ffridge
 
 import android.app.Application
-import com.example.ffridge.data.local.AppDatabase
+import dagger.hilt.android.HiltAndroidApp
 
-class FfridgeApplication : Application() {
-    // Khởi tạo database lười (lazy) - chỉ tạo khi cần dùng
-    val database by lazy { AppDatabase.getDatabase(this) }
-}
+@HiltAndroidApp // <-- QUAN TRỌNG: Dòng này kích hoạt Hilt
+class FfridgeApplication : Application()

@@ -1,10 +1,11 @@
-package com.example.ffridge
+package com.example.ffridge.presentation.scan
 
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -16,30 +17,59 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.ffridge.data.local.FoodItem
-import com.example.ffridge.data.remote.RetrofitClient
 import com.example.ffridge.databinding.ActivityScanCodeBinding
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.Executors
 
+@AndroidEntryPoint // Kích hoạt Hilt cho Activity này
 class ScanCodeActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityScanCodeBinding
-    private var isProcessing = false // Tránh quét liên tục 1 mã
+
+    // Inject ScanViewModel
+    private val viewModel: ScanViewModel by viewModels()
+
+    // Cờ để ngăn việc gọi API liên tục khi quét cùng một mã
+    private var isProcessing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityScanCodeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Bắt đầu quy trình xin quyền và khởi tạo camera
         if (allPermissionsGranted()) {
             startCamera()
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        }
+
+        observeViewModel()
+    }
+
+    // Lắng nghe các sự kiện (thành công, thất bại, đang tải) từ ViewModel
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.scanEvent.collect { event ->
+                when (event) {
+                    is ScanViewModel.ScanEvent.Loading -> {
+                        // Tạm thời hiển thị loading, thường là trên giao diện.
+                        Toast.makeText(this@ScanCodeActivity, "Đang xử lý...", Toast.LENGTH_SHORT).show()
+                    }
+                    is ScanViewModel.ScanEvent.Success -> {
+                        Toast.makeText(this@ScanCodeActivity, "Đã thêm: ${event.productName}", Toast.LENGTH_LONG).show()
+                        isProcessing = false // Reset cờ để cho phép quét tiếp
+                        finish() // Hoàn thành và quay lại màn hình chính
+                    }
+                    is ScanViewModel.ScanEvent.Error -> {
+                        Toast.makeText(this@ScanCodeActivity, event.message, Toast.LENGTH_SHORT).show()
+                        isProcessing = false // Reset cờ
+                    }
+                }
+            }
         }
     }
 
@@ -54,6 +84,7 @@ class ScanCodeActivity : AppCompatActivity() {
             }
 
             val imageAnalyzer = ImageAnalysis.Builder().build().also {
+                // Tận dụng Executor của CameraX để phân tích hình ảnh
                 it.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
                     processImageProxy(imageProxy)
                 }
@@ -85,8 +116,11 @@ class ScanCodeActivity : AppCompatActivity() {
                     for (barcode in barcodes) {
                         val rawValue = barcode.rawValue
                         if (rawValue != null) {
-                            isProcessing = true // Dừng quét tiếp
-                            fetchProductInfo(rawValue)
+                            // Dùng cờ isProcessing để tránh quét 1 mã nhiều lần trong 1 giây
+                            isProcessing = true
+
+                            // Gửi mã UPC lên ViewModel để xử lý logic API và DB
+                            viewModel.onBarcodeScanned(rawValue)
                             break
                         }
                     }
@@ -99,55 +133,11 @@ class ScanCodeActivity : AppCompatActivity() {
         }
     }
 
-    private fun fetchProductInfo(upc: String) {
-        runOnUiThread {
-            Toast.makeText(this, "Đã quét mã: $upc. Đang tìm kiếm...", Toast.LENGTH_SHORT).show()
-        }
-
-        lifecycleScope.launch {
-            try {
-                val response = RetrofitClient.apiService.getFoodByUPC(upc)
-                if (response.isSuccessful && response.body() != null) {
-                    val product = response.body()!!
-                    val name = product.itemName ?: "Sản phẩm không tên"
-                    val amount = "${product.servingSizeQty ?: 1} ${product.servingSizeUnit ?: "phần"}"
-
-                    saveToDatabase(name, amount)
-                } else {
-                    runOnUiThread {
-                        Toast.makeText(this@ScanCodeActivity, "Không tìm thấy sản phẩm!", Toast.LENGTH_SHORT).show()
-                        isProcessing = false // Cho phép quét lại
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                runOnUiThread {
-                    Toast.makeText(this@ScanCodeActivity, "Lỗi mạng: ${e.message}", Toast.LENGTH_SHORT).show()
-                    isProcessing = false
-                }
-            }
-        }
-    }
-
-    private fun saveToDatabase(name: String, amount: String) {
-        val database = (application as FfridgeApplication).database
-        val currentDate = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault()).format(Date())
-        val item = FoodItem(name = name, amount = amount, storedDate = currentDate)
-
-        lifecycleScope.launch {
-            database.foodDao().insert(item)
-            runOnUiThread {
-                Toast.makeText(this@ScanCodeActivity, "Đã thêm: $name", Toast.LENGTH_LONG).show()
-                finish() // Quay về màn hình chính
-            }
-        }
-    }
-
+    // --- Xử lý quyền truy cập ---
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Xử lý khi người dùng cho phép quyền camera
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {

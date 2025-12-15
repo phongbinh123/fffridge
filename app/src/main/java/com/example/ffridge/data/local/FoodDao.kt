@@ -1,30 +1,28 @@
-package com.example.ffridge.data.local
+package com.example.ffridge.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.ffridge.data.local.entity.FoodEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FoodDao {
-    // Lấy toàn bộ thực phẩm, Flow giúp tự động cập nhật UI khi dữ liệu đổi
+    // Flow là tuyệt vời cho Clean Arch, nó giúp Data Layer tự bắn tín hiệu lên UI khi DB thay đổi
     @Query("SELECT * FROM food_table ORDER BY stored_date ASC")
-    fun getAllFoods(): Flow<List<FoodItem>>
+    fun getAllFoods(): Flow<List<FoodEntity>>
 
-    // Lấy X thực phẩm cũ nhất (cho tính năng Notification)
     @Query("SELECT * FROM food_table ORDER BY stored_date ASC LIMIT :limit")
-    suspend fun getOldestFoods(limit: Int): List<FoodItem>
+    fun getOldestFoods(limit: Int): Flow<List<FoodEntity>>
 
-    // Thêm món ăn
-    @Insert
-    suspend fun insert(food: FoodItem)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(food: FoodEntity)
 
-    // Xóa món ăn
     @Delete
-    suspend fun delete(food: FoodItem)
+    suspend fun delete(food: FoodEntity)
 
-    // Tìm kiếm (cho chức năng Search)
-    @Query("SELECT * FROM food_table WHERE name LIKE '%' || :searchQuery || '%'")
-    fun searchFoods(searchQuery: String): Flow<List<FoodItem>>
+    @Query("SELECT * FROM food_table WHERE name LIKE '%' || :query || '%'")
+    fun searchFoods(query: String): Flow<List<FoodEntity>>
 }

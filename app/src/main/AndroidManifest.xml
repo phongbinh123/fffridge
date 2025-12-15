@@ -17,7 +17,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ffridge">
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.home.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,9 +25,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".AddFoodActivity" />
-        <activity android:name=".ScanCodeActivity" />
-        <activity android:name=".RecipeActivity" />
+        <activity android:name=".presentation.addfood.AddFoodActivity" />
+        <activity android:name=".presentation.scan.ScanCodeActivity" />
+        <activity android:name=".presentation.recipe.RecipeActivity" />
     </application>
 
 </manifest>

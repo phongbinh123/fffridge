@@ -8,4 +8,8 @@ plugins {
 
     // 3. KSP (Kotlin Symbol Processing) Plugin
     id("com.google.devtools.ksp") version "2.0.0-1.0.22" apply false
+
+    id("com.google.dagger.hilt.android") version "2.48" apply false
+
+    kotlin("kapt") version "2.0.0" apply false
 }

@@ -1,8 +1,9 @@
 plugins {
     id("com.android.application")
-    // Sửa lỗi 'jetbrains' ở đây
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("kotlin-kapt")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -49,6 +50,9 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
+    // --- Image Loading ---
+    implementation("io.coil-kt:coil:2.5.0")
+
     // --- 1. ROOM DATABASE (Thay thế SQLite/MyDB.java cũ) ---
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
@@ -72,6 +76,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
+    // --- Hilt ---
+    implementation("com.google.dagger:hilt-android:2.48")
+    kapt("com.google.dagger:hilt-android-compiler:2.48")
 
     // --- Testing ---
     testImplementation("junit:junit:4.13.2")
