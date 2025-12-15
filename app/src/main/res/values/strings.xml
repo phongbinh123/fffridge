@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ffridge</string>
+    <string name="hint_search">Search for food</string>
+    <string name="btn_add">Add</string>
+    <string name="btn_scan">Scan</string>
+    <string name="btn_recipe">Recipe</string>
+</resources>
