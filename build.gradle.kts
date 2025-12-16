@@ -4,12 +4,12 @@ plugins {
     id("com.android.application") version "8.13.2" apply false
 
     // 2. Kotlin Android Plugin (Sửa lỗi 'jetbrains')
-    id("org.jetbrains.kotlin.android") version "2.0.0" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
 
     // 3. KSP (Kotlin Symbol Processing) Plugin
-    id("com.google.devtools.ksp") version "2.0.0-1.0.22" apply false
+    id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
 
     id("com.google.dagger.hilt.android") version "2.48" apply false
 
-    kotlin("kapt") version "2.0.0" apply false
+    kotlin("kapt") version "1.9.22" apply false
 }

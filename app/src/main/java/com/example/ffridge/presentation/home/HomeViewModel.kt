@@ -25,7 +25,7 @@ class HomeViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
 
     val foodListState: StateFlow<List<Food>> = _searchQuery
-        .flatMapLatest { query ->
+        .   flatMapLatest { query ->
             if (query.isBlank()) {
                 getFoodsUseCase()
             } else {

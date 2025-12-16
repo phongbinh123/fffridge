@@ -4,30 +4,23 @@ import com.example.ffridge.data.local.dao.FoodDao
 import com.example.ffridge.data.mapper.toDomain
 import com.example.ffridge.data.mapper.toDomainList
 import com.example.ffridge.data.mapper.toEntity
-import com.example.ffridge.data.remote.ApiService
+import com.example.ffridge.data.remote.RetrofitClient
 import com.example.ffridge.domain.model.Food
 import com.example.ffridge.domain.repository.FoodRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class FoodRepositoryImpl @Inject constructor(
+class FoodRepositoryImpl(
     private val dao: FoodDao,
-    private val apiService: ApiService
+    private val apiService: com.example.ffridge.data.remote.ApiService = RetrofitClient.apiService
 ) : FoodRepository {
 
     override fun getAllFoods(): Flow<List<Food>> {
-        return dao.getAllFoods().map { entities ->
-            entities.toDomainList()
-        }
+        return dao.getAllFoods().map { it.toDomainList() }
     }
 
     override fun searchFoods(query: String): Flow<List<Food>> {
-        return dao.searchFoods(query).map { entities ->
-            entities.toDomainList()
-        }
+        return dao.searchFoods(query).map { it.toDomainList() }
     }
 
     override suspend fun insertFood(food: Food) {
@@ -38,14 +31,35 @@ class FoodRepositoryImpl @Inject constructor(
         dao.delete(food.toEntity())
     }
 
+    // Quét mã vạch (UPC)
     override suspend fun getFoodFromBarcode(upc: String): Result<Food> {
         return try {
             val response = apiService.getFoodByUPC(upc)
             if (response.isSuccessful && response.body() != null) {
-                val food = response.body()!!.toDomain()
-                Result.success(food)
+                Result.success(response.body()!!.toDomain())
             } else {
                 Result.failure(Exception("Không tìm thấy sản phẩm"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Tìm kiếm theo tên (Cho Manual Entry)
+    override suspend fun getFoodInfoByName(query: String): Result<Food> {
+        return try {
+            val response = apiService.searchFoodByName(query)
+            if (response.isSuccessful && response.body() != null) {
+                val hits = response.body()!!.hits
+                if (hits.isNotEmpty()) {
+                    // Lấy kết quả đầu tiên (fields chứa thông tin chi tiết)
+                    val firstMatch = hits[0].fields
+                    Result.success(firstMatch.toDomain())
+                } else {
+                    Result.failure(Exception("Không tìm thấy thông tin"))
+                }
+            } else {
+                Result.failure(Exception("Lỗi API: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -34,7 +34,7 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "food_database"
-        ).build()
+        ).allowMainThreadQueries().build()
     }
 
     @Provides
@@ -45,13 +45,6 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .addInterceptor {
-                val req = it.request().newBuilder()
-                    .addHeader("X-RapidAPI-Key", "YOUR_API_KEY") // <-- TODO: Thay bằng API Key của bạn
-                    .addHeader("X-RapidAPI-Host", "spoonacular-recipe-food-nutrition-v1.p.rapidapi.com")
-                    .build()
-                it.proceed(req)
-            }
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
             .build()
     }
@@ -95,6 +88,10 @@ object AppModule {
 
     @Provides
     fun provideScanBarcodeUseCase(repo: FoodRepository) = ScanBarcodeUseCase(repo)
+
+    @Provides
+    fun provideSearchFoodInfoUseCase(repo: FoodRepository) =
+        com.example.ffridge.domain.usecase.food.SearchFoodInfoUseCase(repo)
 
     // --- 5. UseCases (Recipe) ---
     @Provides

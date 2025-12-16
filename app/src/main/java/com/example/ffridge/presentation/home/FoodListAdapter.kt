@@ -5,11 +5,15 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.ffridge.domain.model.Food
+import coil.load
+import com.example.ffridge.R
 import com.example.ffridge.databinding.ItemFoodBinding
+import com.example.ffridge.domain.model.Food
 
-class FoodListAdapter(private val onDeleteClick: (Food) -> Unit) :
-    ListAdapter<Food, FoodListAdapter.FoodViewHolder>(FoodComparator()) {
+class FoodListAdapter(
+    private val onDeleteClick: (Food) -> Unit,
+    private val onRootClick: (Food) -> Unit
+) : ListAdapter<Food, FoodListAdapter.FoodViewHolder>(FoodComparator()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FoodViewHolder {
         val binding = ItemFoodBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -23,13 +27,28 @@ class FoodListAdapter(private val onDeleteClick: (Food) -> Unit) :
 
     inner class FoodViewHolder(private val binding: ItemFoodBinding) :
         RecyclerView.ViewHolder(binding.root) {
+
         fun bind(food: Food) {
             binding.tvName.text = food.name
-            binding.tvAmount.text = food.amount
-            binding.tvDate.text = "Mua ngày: ${food.storedDate}"
+            // Cập nhật để hiển thị calories
+            binding.tvAmount.text = "Qty: ${food.amount} | Cal: ${food.calories}"
+            binding.tvDate.text = android.text.format.DateFormat.format("yyyy-MM-dd", food.storedDate)
+
+            // Sử dụng Coil để tải ảnh
+            binding.imgFood.load(food.imageUri) {
+                crossfade(true)
+                placeholder(R.mipmap.ic_launcher) // Ảnh mặc định trong lúc tải
+                error(R.mipmap.ic_launcher)       // Ảnh mặc định khi lỗi
+                fallback(R.mipmap.ic_launcher)    // Ảnh mặc định nếu imageUri là null
+            }
 
             binding.btnDelete.setOnClickListener {
                 onDeleteClick(food)
+            }
+
+            binding.root.setOnClickListener {
+                onRootClick(food)
+                binding.radioSelect.isChecked = !binding.radioSelect.isChecked
             }
         }
     }

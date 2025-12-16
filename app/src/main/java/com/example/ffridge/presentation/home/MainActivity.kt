@@ -10,6 +10,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.ffridge.R
 import com.example.ffridge.databinding.ActivityMainBinding
 import com.example.ffridge.presentation.addfood.AddFoodActivity
 import com.example.ffridge.presentation.recipe.RecipeActivity
@@ -17,14 +18,11 @@ import com.example.ffridge.presentation.scan.ScanCodeActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
-@AndroidEntryPoint // <-- QUAN TRỌNG
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
-    // Hilt tự động inject ViewModel
     private val viewModel: HomeViewModel by viewModels()
-
     private lateinit var foodAdapter: FoodListAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,16 +31,21 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupRecyclerView()
-        setupButtons()
+        setupNavigation()
         setupSearch()
         observeData()
     }
 
     private fun setupRecyclerView() {
-        foodAdapter = FoodListAdapter { food ->
-            viewModel.deleteFood(food)
-            Toast.makeText(this, "Đã xóa ${food.name}", Toast.LENGTH_SHORT).show()
-        }
+        foodAdapter = FoodListAdapter(
+            onDeleteClick = { food ->
+                viewModel.deleteFood(food)
+                Toast.makeText(this, "Đã xóa ${food.name}", Toast.LENGTH_SHORT).show()
+            },
+            onRootClick = { food ->
+                // Xử lý khi bấm vào thẻ món ăn nếu cần
+            }
+        )
 
         binding.recyclerView.apply {
             adapter = foodAdapter
@@ -50,10 +53,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupButtons() {
-        binding.btnNavAdd.setOnClickListener { startActivity(Intent(this, AddFoodActivity::class.java)) }
-        binding.btnNavScan.setOnClickListener { startActivity(Intent(this, ScanCodeActivity::class.java)) }
-        binding.btnNavRecipe.setOnClickListener { startActivity(Intent(this, RecipeActivity::class.java)) }
+    private fun setupNavigation() {
+        binding.btnBigScan.setOnClickListener {
+            startActivity(Intent(this, ScanCodeActivity::class.java))
+        }
+
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_fridge -> {
+                    binding.recyclerView.smoothScrollToPosition(0)
+                    true
+                }
+                R.id.nav_add -> {
+                    startActivity(Intent(this, AddFoodActivity::class.java))
+                    false
+                }
+                R.id.nav_suggestions -> {
+                    startActivity(Intent(this, RecipeActivity::class.java))
+                    false
+                }
+                R.id.nav_settings -> {
+                    Toast.makeText(this, "Tính năng Settings đang phát triển", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun setupSearch() {
