@@ -4,14 +4,19 @@ import com.example.ffridge.domain.model.Food
 import kotlinx.coroutines.flow.Flow
 
 interface FoodRepository {
+    // Lấy toàn bộ danh sách (Flow giúp tự động cập nhật UI)
     fun getAllFoods(): Flow<List<Food>>
+
+    // Tìm kiếm trong Database
     fun searchFoods(query: String): Flow<List<Food>>
+
+    // Thêm và Xóa
     suspend fun insertFood(food: Food)
     suspend fun deleteFood(food: Food)
 
-    // Tìm thông tin món ăn qua UPC (Quét mã)
+    // Quét mã vạch (Gọi API -> Trả về kết quả)
     suspend fun getFoodFromBarcode(upc: String): Result<Food>
 
-    // Tìm thông tin món ăn qua Tên (Nhập tay -> Tự điền Calo/Ảnh)
+    // Tìm thông tin dinh dưỡng theo tên (cho tính năng nhập tay mới)
     suspend fun getFoodInfoByName(query: String): Result<Food>
 }

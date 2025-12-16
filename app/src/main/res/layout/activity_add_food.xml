@@ -146,7 +146,8 @@
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_button_teal"
                     android:src="@android:drawable/ic_menu_search"
-                    app:tint="@color/white"/>
+                    app:tint="@color/white"
+                    android:contentDescription="Tìm kiếm thông tin món ăn" />
             </LinearLayout>
 
             <EditText

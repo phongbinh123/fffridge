@@ -31,19 +31,37 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupRecyclerView()
-        setupNavigation()
+        setupBottomNavigation()
         setupSearch()
         observeData()
     }
 
     private fun setupRecyclerView() {
         foodAdapter = FoodListAdapter(
+            // Logic Xóa
             onDeleteClick = { food ->
                 viewModel.deleteFood(food)
                 Toast.makeText(this, "Đã xóa ${food.name}", Toast.LENGTH_SHORT).show()
             },
+
+            // Logic Sửa (MỚI)
+            onEditClick = { food ->
+                val intent = Intent(this, AddFoodActivity::class.java)
+                // Truyền dữ liệu sang màn hình AddFood để hiển thị lại
+                intent.putExtra("food_id", food.id)
+                intent.putExtra("food_name", food.name)
+                intent.putExtra("food_amount", food.amount)
+                intent.putExtra("food_calories", food.calories)
+                intent.putExtra("food_date", food.storedDate.time) // Truyền Long
+                intent.putExtra("food_image", food.imageUri)
+
+                startActivity(intent)
+            },
+
+            // Logic Click vào thẻ
             onRootClick = { food ->
-                // Xử lý khi bấm vào thẻ món ăn nếu cần
+                // For now, just show a toast
+                Toast.makeText(this, "Clicked on ${food.name}", Toast.LENGTH_SHORT).show()
             }
         )
 
@@ -53,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupNavigation() {
+    private fun setupBottomNavigation() {
         binding.btnBigScan.setOnClickListener {
             startActivity(Intent(this, ScanCodeActivity::class.java))
         }
@@ -73,7 +91,7 @@ class MainActivity : AppCompatActivity() {
                     false
                 }
                 R.id.nav_settings -> {
-                    Toast.makeText(this, "Tính năng Settings đang phát triển", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false

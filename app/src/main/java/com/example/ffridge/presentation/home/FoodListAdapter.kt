@@ -12,6 +12,7 @@ import com.example.ffridge.domain.model.Food
 
 class FoodListAdapter(
     private val onDeleteClick: (Food) -> Unit,
+    private val onEditClick: (Food) -> Unit, // <--- THÊM DÒNG NÀY (Callback Sửa)
     private val onRootClick: (Food) -> Unit
 ) : ListAdapter<Food, FoodListAdapter.FoodViewHolder>(FoodComparator()) {
 
@@ -29,26 +30,33 @@ class FoodListAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(food: Food) {
+            // Gán dữ liệu
             binding.tvName.text = food.name
-            // Cập nhật để hiển thị calories
-            binding.tvAmount.text = "Qty: ${food.amount} | Cal: ${food.calories}"
+            binding.tvAmount.text = "Qty: ${food.amount}"
             binding.tvDate.text = android.text.format.DateFormat.format("yyyy-MM-dd", food.storedDate)
 
-            // Sử dụng Coil để tải ảnh
+            // Load ảnh (code cũ của bạn)
             binding.imgFood.load(food.imageUri) {
                 crossfade(true)
-                placeholder(R.mipmap.ic_launcher) // Ảnh mặc định trong lúc tải
-                error(R.mipmap.ic_launcher)       // Ảnh mặc định khi lỗi
-                fallback(R.mipmap.ic_launcher)    // Ảnh mặc định nếu imageUri là null
+                placeholder(R.mipmap.ic_launcher)
+                error(R.mipmap.ic_launcher)
             }
 
+            // --- XỬ LÝ SỰ KIỆN NÚT BẤM ---
+
+            // 1. Nút Xóa
             binding.btnDelete.setOnClickListener {
                 onDeleteClick(food)
             }
 
+            // 2. Nút Sửa (Mới)
+            binding.btnEdit.setOnClickListener {
+                onEditClick(food)
+            }
+
+            // 3. Click vào cả thẻ (Xem chi tiết)
             binding.root.setOnClickListener {
                 onRootClick(food)
-                binding.radioSelect.isChecked = !binding.radioSelect.isChecked
             }
         }
     }
@@ -57,7 +65,6 @@ class FoodListAdapter(
         override fun areItemsTheSame(oldItem: Food, newItem: Food): Boolean {
             return oldItem.id == newItem.id
         }
-
         override fun areContentsTheSame(oldItem: Food, newItem: Food): Boolean {
             return oldItem == newItem
         }

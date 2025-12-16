@@ -94,6 +94,7 @@ object AppModule {
         return GetFoodInfoUseCase(repository)
     }
 
+
     @Provides
     fun provideSearchFoodInfoUseCase(repo: FoodRepository) =
         com.example.ffridge.domain.usecase.food.SearchFoodInfoUseCase(repo)
@@ -101,4 +102,6 @@ object AppModule {
     // --- 5. UseCases (Recipe) ---
     @Provides
     fun provideGetRandomRecipeUseCase(repo: RecipeRepository) = GetRandomRecipeUseCase(repo)
+
+
 }
