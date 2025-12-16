@@ -48,13 +48,26 @@ class FoodRepositoryImpl(
     // Tìm kiếm theo tên (Cho Manual Entry)
     override suspend fun getFoodInfoByName(query: String): Result<Food> {
         return try {
-            val response = apiService.searchFoodByName(query)
+            // Gọi API Natural Nutrients (POST)
+            val response = apiService.getNaturalNutrients(
+                com.example.ffridge.data.remote.NaturalQuery(query)
+            )
+
             if (response.isSuccessful && response.body() != null) {
-                val hits = response.body()!!.hits
-                if (hits.isNotEmpty()) {
-                    // Lấy kết quả đầu tiên (fields chứa thông tin chi tiết)
-                    val firstMatch = hits[0].fields
-                    Result.success(firstMatch.toDomain())
+                val foods = response.body()!!.foods
+                if (foods.isNotEmpty()) {
+                    val item = foods[0] // Lấy món đầu tiên
+                    
+                    // Map sang Domain Model
+                    val food = Food(
+                        id = 0,
+                        name = item.foodName?.replaceFirstChar { it.uppercase() } ?: query,
+                        amount = "${item.servingQty ?: 1} ${item.servingUnit ?: "serving"}",
+                        storedDate = java.util.Date(),
+                        calories = item.calories ?: 0.0,
+                        imageUri = item.photo?.thumb // Lấy link ảnh thumbnail
+                    )
+                    Result.success(food)
                 } else {
                     Result.failure(Exception("Không tìm thấy thông tin"))
                 }

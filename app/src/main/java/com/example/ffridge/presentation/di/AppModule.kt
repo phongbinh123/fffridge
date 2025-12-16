@@ -90,6 +90,11 @@ object AppModule {
     fun provideScanBarcodeUseCase(repo: FoodRepository) = ScanBarcodeUseCase(repo)
 
     @Provides
+    fun provideGetFoodInfoUseCase(repository: FoodRepository): GetFoodInfoUseCase {
+        return GetFoodInfoUseCase(repository)
+    }
+
+    @Provides
     fun provideSearchFoodInfoUseCase(repo: FoodRepository) =
         com.example.ffridge.domain.usecase.food.SearchFoodInfoUseCase(repo)
 

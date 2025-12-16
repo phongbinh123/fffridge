@@ -1,7 +1,7 @@
 package com.example.ffridge.data.mapper
 
 import com.example.ffridge.data.local.entity.FoodEntity
-import com.example.ffridge.data.remote.dto.NutritionixResponse
+import com.example.ffridge.data.remote.NutritionixResponse
 import com.example.ffridge.domain.model.Food
 import java.util.Date
 
@@ -12,7 +12,7 @@ fun FoodEntity.toDomain(): Food {
         name = this.name,
         amount = this.amount,
         storedDate = Date(this.storedDate),
-        calories = this.calories, // Sửa ở đây
+        calories = this.calories,
         imageUri = this.imageUri
     )
 }
@@ -24,7 +24,7 @@ fun Food.toEntity(): FoodEntity {
         name = this.name,
         amount = this.amount,
         storedDate = this.storedDate.time,
-        calories = this.calories, // Sửa ở đây
+        calories = this.calories,
         imageUri = this.imageUri
     )
 }
@@ -37,20 +37,20 @@ fun List<FoodEntity>.toDomainList(): List<Food> {
 // Chuyển đổi từ kết quả API quét mã vạch -> Domain Model
 fun NutritionixResponse.toDomain(): Food {
     val name = this.itemName ?: "Sản phẩm chưa biết tên"
-    val amountStr = if (this.servingSizeQty != null && this.servingSizeUnit != null) {
-        "${this.servingSizeQty} ${this.servingSizeUnit}"
+    val amountStr = if (this.servingQty != null && this.servingUnit != null) {
+        "${this.servingQty} ${this.servingUnit}"
     } else {
         "1 phần"
     }
     // API có thể không trả về calories, nên ta gán mặc định là 0.0
-    val caloriesValue = this.nfCalories ?: 0.0
+    val caloriesValue = this.calories ?: 0.0
 
     return Food(
         id = 0,
         name = name,
         amount = amountStr,
         storedDate = Date(),
-        calories = caloriesValue, // Sửa ở đây
-        imageUri = null
+        calories = caloriesValue,
+        imageUri = this.photo?.thumb
     )
 }
