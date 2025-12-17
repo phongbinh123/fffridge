@@ -1,9 +1,11 @@
 package com.example.ffridge.domain.model
 
 data class Recipe(
-    val id: Int,
+    val id: Int = 0,
     val title: String,
-    val instructions: String,
     val ingredients: List<String>,
-    val imageUrl: String? = null
+    val description: String,
+    val imageUrl: String? = null,
+    val cookingTime: String = "",
+    val difficulty: String = "Easy"
 )
