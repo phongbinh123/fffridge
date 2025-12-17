@@ -1,3 +1,4 @@
+
 package com.example.ffridge.data.mapper
 
 import com.example.ffridge.data.local.entity.FoodEntity

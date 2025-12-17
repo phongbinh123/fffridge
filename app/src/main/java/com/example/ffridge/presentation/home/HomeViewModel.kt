@@ -5,13 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.ffridge.domain.model.Food
 import com.example.ffridge.domain.usecase.food.DeleteFoodUseCase
 import com.example.ffridge.domain.usecase.food.GetFoodsUseCase
-import com.example.ffridge.domain.usecase.food.SearchFoodUseCase
+import com.example.ffridge.domain.usecase.food.AddFoodUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,28 +16,33 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val getFoodsUseCase: GetFoodsUseCase,
     private val deleteFoodUseCase: DeleteFoodUseCase,
-    private val searchFoodUseCase: SearchFoodUseCase
+    private val addFoodUseCase: AddFoodUseCase
 ) : ViewModel() {
 
-    private val _searchQuery = MutableStateFlow("")
+    private val _foods = MutableStateFlow<List<Food>>(emptyList())
+    val foods = _foods.asStateFlow()
 
-    val foodListState: StateFlow<List<Food>> = _searchQuery
-        .   flatMapLatest { query ->
-            if (query.isBlank()) {
-                getFoodsUseCase()
-            } else {
-                searchFoodUseCase(query)
+    init {
+        loadFoods()
+    }
+
+    private fun loadFoods() {
+        viewModelScope.launch {
+            getFoodsUseCase().collect {
+                _foods.value = it
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    fun onSearchQueryChanged(query: String) {
-        _searchQuery.value = query
     }
 
     fun deleteFood(food: Food) {
         viewModelScope.launch {
             deleteFoodUseCase(food)
+        }
+    }
+
+    fun updateFood(food: Food) {
+        viewModelScope.launch {
+            addFoodUseCase(food)  // Room sẽ update nếu ID đã tồn tại
         }
     }
 }

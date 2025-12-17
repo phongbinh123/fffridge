@@ -1,10 +1,12 @@
 package com.example.ffridge.presentation.addfood
 
-import android.app.Activity
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.speech.RecognizerIntent
 import android.view.View
 import android.widget.Toast
@@ -17,9 +19,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import coil.load
 import com.example.ffridge.R
 import com.example.ffridge.databinding.ActivityAddFoodBinding
-import com.example.ffridge.presentation.scan.ScanCodeActivity
+import com.example.ffridge.presentation.scan.ScanFoodActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -31,15 +35,49 @@ class AddFoodActivity : AppCompatActivity() {
     private val viewModel: AddFoodViewModel by viewModels()
     private val calendar = Calendar.getInstance()
 
-    // Launcher cho Voice Input
+    private var selectedImageUri: Uri? = null
+
+    // Voice Input Launcher
     private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.get(0)
             spokenText?.let {
                 binding.etName.setText(it)
-                // Tự động tìm kiếm sau khi nói xong
                 viewModel.searchFoodInfo(it)
                 Toast.makeText(this, "Đã nhận diện: $it", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Gallery Picker Launcher
+    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it
+            binding.imgPreview.load(it) {
+                crossfade(true)
+            }
+            binding.iconAddImage.visibility = View.GONE
+            viewModel.setUserSelectedImage(it.toString())
+        }
+    }
+
+    // Camera Launcher
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
+            imageBitmap?.let { bitmap ->
+                // Lưu bitmap vào file tạm
+                val file = File(cacheDir, "temp_photo_${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                }
+                selectedImageUri = Uri.fromFile(file)
+
+                binding.imgPreview.load(bitmap) {
+                    crossfade(true)
+                }
+                binding.iconAddImage.visibility = View.GONE
+                viewModel.setUserSelectedImage(selectedImageUri.toString())
             }
         }
     }
@@ -51,42 +89,51 @@ class AddFoodActivity : AppCompatActivity() {
 
         setupUI()
         observeViewModel()
+        handleScannedData()  // ← ĐÃ CÓ
     }
 
     private fun setupUI() {
         // --- 1. Xử lý Tabs ---
-        
-        // Tab Scan: Chuyển sang màn hình Scan
         binding.tabScan.setOnClickListener {
-            startActivity(Intent(this, ScanCodeActivity::class.java))
-            // Không gọi finish() để người dùng có thể back lại nếu muốn
+            startActivity(Intent(this, ScanFoodActivity::class.java))
         }
 
-        // Tab Manual: (Đang ở đây) - Chỉ cập nhật UI cho đẹp
         binding.tabManual.setOnClickListener {
             updateTabStyles(isManual = true)
         }
 
-        // Tab Voice: Gọi Google Voice Input
         binding.tabVoice.setOnClickListener {
-            updateTabStyles(isManual = false) // Highlight tab Voice
+            updateTabStyles(isManual = false)
             startVoiceInput()
         }
 
-        // --- 2. Các nút chức năng khác ---
-        
-        // Nút Search thủ công
+        // --- 2. Xử lý chọn ảnh ---
+        binding.btnPickFromGallery.setOnClickListener {
+            galleryLauncher.launch("image/*")
+        }
+
+        binding.btnTakePhoto.setOnClickListener {
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            cameraLauncher.launch(intent)
+        }
+
+        // Click vào ảnh để chọn lại
+        binding.imgPreview.setOnClickListener {
+            galleryLauncher.launch("image/*")
+        }
+
+        // --- 3. Các nút chức năng khác ---
         binding.btnSearchInfo.setOnClickListener {
             val query = binding.etName.text.toString()
             if (query.isNotEmpty()) {
                 viewModel.searchFoodInfo(query)
-                // Ẩn bàn phím
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
                 imm.hideSoftInputFromWindow(binding.root.windowToken, 0)
+            } else {
+                Toast.makeText(this, "Vui lòng nhập tên thực phẩm", Toast.LENGTH_SHORT).show()
             }
         }
-        
-        // Tự động search khi ô tên mất focus (Debounce đơn giản)
+
         binding.etName.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val query = binding.etName.text.toString()
@@ -94,19 +141,99 @@ class AddFoodActivity : AppCompatActivity() {
             }
         }
 
-        // Date Picker
         binding.etExpiryDate.setOnClickListener { showDatePicker() }
 
-        // Save Button
         binding.btnSave.setOnClickListener {
             val name = binding.etName.text.toString()
             val amount = binding.etQuantity.text.toString()
-            
+
             if (name.isBlank() || amount.isBlank() || binding.etExpiryDate.text.toString().isBlank()) {
                 Toast.makeText(this, "Vui lòng nhập tên, số lượng và ngày hết hạn", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             viewModel.saveFood(name, amount, calendar.time)
+        }
+
+        // --- 4. THÊM: Xử lý Bottom Navigation ---
+        setupBottomNavigation()
+    }
+
+    // ← THÊM HÀM NÀY: Xử lý dữ liệu từ ScanFoodActivity
+    private fun handleScannedData() {
+        intent?.let {
+            val scannedName = it.getStringExtra("SCANNED_NAME")
+            val scannedAmount = it.getStringExtra("SCANNED_AMOUNT")
+            val scannedCalories = it.getDoubleExtra("SCANNED_CALORIES", 0.0)
+            val scannedExpiryDate = it.getStringExtra("SCANNED_EXPIRY_DATE")
+            val scannedImageUri = it.getStringExtra("SCANNED_IMAGE_URI")
+
+            // Chỉ fill data nếu có dữ liệu từ scan
+            if (!scannedName.isNullOrEmpty()) {
+                // 1. Fill name → binding.etName
+                binding.etName.setText(scannedName)
+
+                // 2. Fill amount → binding.etQuantity
+                binding.etQuantity.setText(scannedAmount ?: "1 pcs")
+
+                // 3. Fill calories → binding.etCalories
+                if (scannedCalories > 0) {
+                    binding.etCalories.setText(scannedCalories.toString())
+                }
+
+                // 4. Fill expiry date → binding.etExpiryDate
+                if (!scannedExpiryDate.isNullOrEmpty()) {
+                    binding.etExpiryDate.setText(scannedExpiryDate)
+                    // Sync calendar với ngày đã scan
+                    try {
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        calendar.time = sdf.parse(scannedExpiryDate) ?: calendar.time
+                    } catch (e: Exception) {
+                        // Ignore parse error
+                    }
+                }
+
+                // 5. Fill image → selectedImageUri
+                if (!scannedImageUri.isNullOrEmpty()) {
+                    selectedImageUri = Uri.parse(scannedImageUri)
+                    binding.imgPreview.load(selectedImageUri) {
+                        crossfade(true)
+                    }
+                    binding.iconAddImage.visibility = View.GONE
+                    viewModel.setUserSelectedImage(scannedImageUri)
+                }
+
+                Toast.makeText(this, "✅ Scanned data loaded! Review and save", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // ← THÊM HÀM NÀY: Xử lý Bottom Navigation
+    private fun setupBottomNavigation() {
+        binding.bottomNavigation.selectedItemId = R.id.nav_add  // Highlight tab Add
+
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_fridge -> {
+                    // Quay về MainActivity
+                    finish()
+                    true
+                }
+                R.id.nav_add -> {
+                    // Đang ở màn hình này rồi
+                    true
+                }
+                R.id.nav_suggestions -> {
+                    // TODO: Mở màn hình suggestions
+                    Toast.makeText(this, "Suggestions coming soon!", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.nav_settings -> {
+                    // TODO: Mở màn hình settings
+                    Toast.makeText(this, "Settings coming soon!", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -124,7 +251,6 @@ class AddFoodActivity : AppCompatActivity() {
     }
 
     private fun updateTabStyles(isManual: Boolean) {
-        // Logic đổi màu nền Tab đơn giản để người dùng biết đang chọn cái nào
         if (isManual) {
             binding.tabManual.setBackgroundResource(R.drawable.bg_tab_selected)
             binding.tabManual.setTextColor(Color.WHITE)
@@ -157,17 +283,19 @@ class AddFoodActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state ->
                     binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
-                    
+
                     if (state.foundCalories > 0) {
                         binding.etCalories.setText(state.foundCalories.toString())
                     }
-                    
-                    if (state.foundImageUri != null) {
+
+                    // Chỉ load ảnh từ API nếu người dùng chưa chọn ảnh
+                    if (state.foundImageUri != null && selectedImageUri == null) {
                         binding.imgPreview.visibility = View.VISIBLE
-                        // Load ảnh bằng Coil
+                        binding.iconAddImage.visibility = View.GONE
                         binding.imgPreview.load(state.foundImageUri) {
                             crossfade(true)
-                            placeholder(R.mipmap.ic_launcher)
+                            placeholder(R.drawable.ic_default_food)
+                            error(R.drawable.ic_default_food)
                         }
                     }
                 }

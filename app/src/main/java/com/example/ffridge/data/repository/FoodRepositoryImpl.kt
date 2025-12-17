@@ -31,19 +31,6 @@ class FoodRepositoryImpl(
         dao.delete(food.toEntity())
     }
 
-    // Quét mã vạch (UPC)
-    override suspend fun getFoodFromBarcode(upc: String): Result<Food> {
-        return try {
-            val response = apiService.getFoodByUPC(upc)
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.toDomain())
-            } else {
-                Result.failure(Exception("Không tìm thấy sản phẩm"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
 
     // Tìm kiếm theo tên (Cho Manual Entry)
     override suspend fun getFoodInfoByName(query: String): Result<Food> {

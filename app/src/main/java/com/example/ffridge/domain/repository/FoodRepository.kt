@@ -14,9 +14,6 @@ interface FoodRepository {
     suspend fun insertFood(food: Food)
     suspend fun deleteFood(food: Food)
 
-    // Quét mã vạch (Gọi API -> Trả về kết quả)
-    suspend fun getFoodFromBarcode(upc: String): Result<Food>
-
     // Tìm thông tin dinh dưỡng theo tên (cho tính năng nhập tay mới)
     suspend fun getFoodInfoByName(query: String): Result<Food>
 }

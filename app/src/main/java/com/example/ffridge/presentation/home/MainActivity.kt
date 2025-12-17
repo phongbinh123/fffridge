@@ -1,29 +1,32 @@
 package com.example.ffridge.presentation.home
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SearchView
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.ffridge.R
 import com.example.ffridge.databinding.ActivityMainBinding
+import com.example.ffridge.databinding.DialogEditFoodBinding
+import com.example.ffridge.domain.model.Food
 import com.example.ffridge.presentation.addfood.AddFoodActivity
-import com.example.ffridge.presentation.recipe.RecipeActivity
-import com.example.ffridge.presentation.scan.ScanCodeActivity
+import com.example.ffridge.presentation.scan.ScanFoodActivity  // ← ĐÃ THAY ĐỔI
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: HomeViewModel by viewModels()
-    private lateinit var foodAdapter: FoodListAdapter
+    private lateinit var adapter: FoodListAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,91 +34,137 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupRecyclerView()
-        setupBottomNavigation()
-        setupSearch()
-        observeData()
+        observeViewModel()
+        setupClickListeners()
     }
 
     private fun setupRecyclerView() {
-        foodAdapter = FoodListAdapter(
-            // Logic Xóa
+        adapter = FoodListAdapter(
             onDeleteClick = { food ->
                 viewModel.deleteFood(food)
                 Toast.makeText(this, "Đã xóa ${food.name}", Toast.LENGTH_SHORT).show()
             },
-
-            // Logic Sửa (MỚI)
-            onEditClick = { food ->
-                val intent = Intent(this, AddFoodActivity::class.java)
-                // Truyền dữ liệu sang màn hình AddFood để hiển thị lại
-                intent.putExtra("food_id", food.id)
-                intent.putExtra("food_name", food.name)
-                intent.putExtra("food_amount", food.amount)
-                intent.putExtra("food_calories", food.calories)
-                intent.putExtra("food_date", food.storedDate.time) // Truyền Long
-                intent.putExtra("food_image", food.imageUri)
-
-                startActivity(intent)
-            },
-
-            // Logic Click vào thẻ
-            onRootClick = { food ->
-                // For now, just show a toast
-                Toast.makeText(this, "Clicked on ${food.name}", Toast.LENGTH_SHORT).show()
-            }
+            onEditClick = { food -> showEditDialog(food) }
         )
 
         binding.recyclerView.apply {
-            adapter = foodAdapter
             layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = this@MainActivity.adapter
         }
     }
 
-    private fun setupBottomNavigation() {
-        binding.btnBigScan.setOnClickListener {
-            startActivity(Intent(this, ScanCodeActivity::class.java))
+    private fun showEditDialog(food: Food) {
+        val dialogBinding = DialogEditFoodBinding.inflate(LayoutInflater.from(this))
+        val calendar = Calendar.getInstance()
+        calendar.time = food.storedDate
+
+        // Điền dữ liệu hiện tại
+        dialogBinding.etEditName.setText(food.name)
+        dialogBinding.etEditAmount.setText(food.amount)
+        dialogBinding.etEditCalories.setText(if (food.calories > 0) food.calories.toString() else "")
+        dialogBinding.etEditDate.setText(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(food.storedDate))
+
+        // DatePicker cho ngày hết hạn
+        dialogBinding.etEditDate.setOnClickListener {
+            DatePickerDialog(
+                this,
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    dialogBinding.etEditDate.setText(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(calendar.time))
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
         }
 
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        // Nút Cancel
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // Nút Save
+        dialogBinding.btnSave.setOnClickListener {
+            val newName = dialogBinding.etEditName.text.toString()
+            val newAmount = dialogBinding.etEditAmount.text.toString()
+            val newCalories = dialogBinding.etEditCalories.text.toString().toDoubleOrNull() ?: 0.0
+
+            if (newName.isBlank() || newAmount.isBlank()) {
+                Toast.makeText(this, "Vui lòng điền đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val updatedFood = food.copy(
+                name = newName,
+                amount = newAmount,
+                calories = newCalories,
+                storedDate = calendar.time
+            )
+
+            viewModel.updateFood(updatedFood)
+            dialog.dismiss()
+            Toast.makeText(this, "Đã cập nhật ${newName}!", Toast.LENGTH_SHORT).show()
+        }
+
+        dialog.show()
+    }
+
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.foods.collect { foods ->
+                adapter.submitList(foods)
+            }
+        }
+    }
+
+    private fun setupClickListeners() {
+        // Nút "Scan Item" - ĐÃ THAY ĐỔI
+        binding.btnBigScan.setOnClickListener {
+            startActivity(Intent(this, ScanFoodActivity::class.java))  // ← ĐÃ THAY ĐỔI
+        }
+
+        // Bottom Navigation
         binding.bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_fridge -> {
-                    binding.recyclerView.smoothScrollToPosition(0)
+                    // Đang ở màn hình này rồi
                     true
                 }
                 R.id.nav_add -> {
                     startActivity(Intent(this, AddFoodActivity::class.java))
-                    false
+                    true
                 }
                 R.id.nav_suggestions -> {
-                    startActivity(Intent(this, RecipeActivity::class.java))
-                    false
+                    // TODO: Mở màn hình suggestions
+                    Toast.makeText(this, "Suggestions coming soon!", Toast.LENGTH_SHORT).show()
+                    true
                 }
                 R.id.nav_settings -> {
-                    Toast.makeText(this, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show()
+                    // TODO: Mở màn hình settings
+                    Toast.makeText(this, "Settings coming soon!", Toast.LENGTH_SHORT).show()
                     true
                 }
                 else -> false
             }
         }
-    }
 
-    private fun setupSearch() {
-        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
+        // Search View
+        binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                // TODO: Implement search
+                return false
+            }
+
             override fun onQueryTextChange(newText: String?): Boolean {
-                viewModel.onSearchQueryChanged(newText ?: "")
-                return true
+                // TODO: Implement real-time search
+                return false
             }
         })
-    }
-
-    private fun observeData() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.foodListState.collect { foods ->
-                    foodAdapter.submitList(foods)
-                }
-            }
-        }
     }
 }

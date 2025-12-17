@@ -5,9 +5,13 @@ import androidx.room.Room
 import com.example.ffridge.data.local.AppDatabase
 import com.example.ffridge.data.local.dao.FoodDao
 import com.example.ffridge.data.remote.ApiService
+import com.example.ffridge.data.remote.GeminiService
+import com.example.ffridge.data.remote.NutritionApi
 import com.example.ffridge.data.repository.FoodRepositoryImpl
+import com.example.ffridge.data.repository.NutritionRepositoryImpl
 import com.example.ffridge.data.repository.RecipeRepositoryImpl
 import com.example.ffridge.domain.repository.FoodRepository
+import com.example.ffridge.domain.repository.NutritionRepository
 import com.example.ffridge.domain.repository.RecipeRepository
 import com.example.ffridge.domain.usecase.food.*
 import com.example.ffridge.domain.usecase.recipe.*
@@ -20,6 +24,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -44,8 +49,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
         return OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY })
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
@@ -60,6 +71,24 @@ object AppModule {
             .create(ApiService::class.java)
     }
 
+    @Provides
+    @Singleton
+    fun provideNutritionApi(okHttpClient: OkHttpClient): NutritionApi {
+        return Retrofit.Builder()
+            .baseUrl("https://api.nal.usda.gov/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(NutritionApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGeminiService(): GeminiService {
+        return GeminiService()
+    }
+
+
     // --- 3. Repositories ---
     @Provides
     @Singleton
@@ -71,6 +100,12 @@ object AppModule {
     @Singleton
     fun provideRecipeRepository(api: ApiService): RecipeRepository {
         return RecipeRepositoryImpl(api)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNutritionRepository(api: NutritionApi): NutritionRepository {
+        return NutritionRepositoryImpl(api)
     }
 
     // --- 4. UseCases (Food) ---
@@ -86,18 +121,15 @@ object AppModule {
     @Provides
     fun provideSearchFoodUseCase(repo: FoodRepository) = SearchFoodUseCase(repo)
 
-    @Provides
-    fun provideScanBarcodeUseCase(repo: FoodRepository) = ScanBarcodeUseCase(repo)
 
     @Provides
     fun provideGetFoodInfoUseCase(repository: FoodRepository): GetFoodInfoUseCase {
         return GetFoodInfoUseCase(repository)
     }
 
-
     @Provides
     fun provideSearchFoodInfoUseCase(repo: FoodRepository) =
-        com.example.ffridge.domain.usecase.food.SearchFoodInfoUseCase(repo)
+        SearchFoodInfoUseCase(repo)
 
     // --- 5. UseCases (Recipe) ---
     @Provides
