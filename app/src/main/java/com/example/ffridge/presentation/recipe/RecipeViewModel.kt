@@ -2,10 +2,10 @@ package com.example.ffridge.presentation.recipe
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.ffridge.data.local.LocalRecipeDataSource
 import com.example.ffridge.domain.model.Food
 import com.example.ffridge.domain.model.Recipe
 import com.example.ffridge.domain.usecase.GetFoodsUseCase
-import com.example.ffridge.domain.usecase.GetRandomRecipeUseCase
 import com.example.ffridge.domain.usecase.GetRecipeSuggestionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,37 +15,38 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RecipeViewModel @Inject constructor(
-    private val getRandomRecipeUseCase: GetRandomRecipeUseCase,
     private val getRecipeSuggestionUseCase: GetRecipeSuggestionUseCase,
     private val getFoodsUseCase: GetFoodsUseCase
 ) : ViewModel() {
 
-    private val _recipeState = MutableStateFlow<RecipeState>(RecipeState.Loading)
-    val recipeState: StateFlow<RecipeState> = _recipeState
+    // All Recipes State - Hiển thị 5 món phổ biến từ LOCAL
+    private val _allRecipes = MutableStateFlow<AllRecipesState>(AllRecipesState.Loading)
+    val allRecipes: StateFlow<AllRecipesState> = _allRecipes
+
+    // Smart Suggestion State - Dựa trên tủ lạnh từ API
+    private val _smartSuggestion = MutableStateFlow<SmartSuggestionState>(SmartSuggestionState.Loading)
+    val smartSuggestion: StateFlow<SmartSuggestionState> = _smartSuggestion
 
     private val _fridgeFoods = MutableStateFlow<List<Food>>(emptyList())
     val fridgeFoods: StateFlow<List<Food>> = _fridgeFoods
-
-    private val _smartSuggestion = MutableStateFlow<SmartSuggestionState>(SmartSuggestionState.Loading)
-    val smartSuggestion: StateFlow<SmartSuggestionState> = _smartSuggestion
 
     private var allSuggestedRecipes: List<Recipe> = emptyList()
     private var currentSuggestionIndex = 0
 
     init {
-        loadAllRecipes()
+        loadPopularRecipes()
         loadFridgeItems()
     }
 
-    private fun loadAllRecipes() {
+    // Load 5 popular recipes từ LOCAL DATA cho "All Recipes"
+    private fun loadPopularRecipes() {
         viewModelScope.launch {
-            getRecipeSuggestionUseCase()
-                .onSuccess { recipes ->
-                    _recipeState.value = RecipeState.Success(recipes)
-                }
-                .onFailure { error ->
-                    _recipeState.value = RecipeState.Error(error.message ?: "Lỗi tải danh sách")
-                }
+            try {
+                val popularRecipes = LocalRecipeDataSource.getPopularRecipes().take(5)
+                _allRecipes.value = AllRecipesState.Success(popularRecipes)
+            } catch (e: Exception) {
+                _allRecipes.value = AllRecipesState.Error(e.message ?: "Lỗi tải danh sách")
+            }
         }
     }
 
@@ -53,7 +54,6 @@ class RecipeViewModel @Inject constructor(
         viewModelScope.launch {
             getFoodsUseCase().collect { foods ->
                 _fridgeFoods.value = foods
-                // Reload smart suggestion khi fridge thay đổi
                 if (foods.isNotEmpty()) {
                     loadSmartSuggestion()
                 } else {
@@ -63,6 +63,7 @@ class RecipeViewModel @Inject constructor(
         }
     }
 
+    // Smart Suggestion - Match nguyên liệu từ API
     private fun loadSmartSuggestion() {
         viewModelScope.launch {
             val foods = _fridgeFoods.value
@@ -80,7 +81,6 @@ class RecipeViewModel @Inject constructor(
                         return@onSuccess
                     }
 
-                    // Tính điểm match cho từng recipe
                     val fridgeIngredients = foods.map { it.name.lowercase() }
                     val recipesWithScore = recipes.map { recipe ->
                         val matchCount = recipe.ingredients.count { ingredient ->
@@ -121,7 +121,6 @@ class RecipeViewModel @Inject constructor(
             return
         }
 
-        // Chuyển sang suggestion tiếp theo
         currentSuggestionIndex = (currentSuggestionIndex + 1) % allSuggestedRecipes.size
         val nextRecipe = allSuggestedRecipes[currentSuggestionIndex]
 
@@ -140,26 +139,12 @@ class RecipeViewModel @Inject constructor(
             totalIngredients = nextRecipe.ingredients.size
         )
     }
-
-    fun fetchRandomRecipe() {
-        _recipeState.value = RecipeState.Loading
-        viewModelScope.launch {
-            getRandomRecipeUseCase()
-                .onSuccess { recipe ->
-                    _recipeState.value = RecipeState.SingleRecipe(recipe)
-                }
-                .onFailure { error ->
-                    _recipeState.value = RecipeState.Error(error.message ?: "Lỗi tải")
-                }
-        }
-    }
 }
 
-sealed class RecipeState {
-    object Loading : RecipeState()
-    data class Success(val recipes: List<Recipe>) : RecipeState()
-    data class SingleRecipe(val recipe: Recipe) : RecipeState()
-    data class Error(val message: String) : RecipeState()
+sealed class AllRecipesState {
+    object Loading : AllRecipesState()
+    data class Success(val recipes: List<Recipe>) : AllRecipesState()
+    data class Error(val message: String) : AllRecipesState()
 }
 
 sealed class SmartSuggestionState {
