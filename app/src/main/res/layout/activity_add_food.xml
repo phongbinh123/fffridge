@@ -23,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="8dp"
-            android:text="Add Item"
+            android:text="add Item"
             android:textColor="@color/brand_teal"
             android:textSize="28sp"
             android:textStyle="bold" />

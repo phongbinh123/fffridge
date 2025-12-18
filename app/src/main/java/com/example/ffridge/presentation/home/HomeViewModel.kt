@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ffridge.domain.model.Food
 import com.example.ffridge.domain.usecase.food.DeleteFoodUseCase
-import com.example.ffridge.domain.usecase.food.GetFoodsUseCase
+import com.example.ffridge.domain.usecase.GetFoodsUseCase
 import com.example.ffridge.domain.usecase.food.AddFoodUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

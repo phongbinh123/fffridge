@@ -15,7 +15,8 @@ import com.example.ffridge.databinding.ActivityMainBinding
 import com.example.ffridge.databinding.DialogEditFoodBinding
 import com.example.ffridge.domain.model.Food
 import com.example.ffridge.presentation.addfood.AddFoodActivity
-import com.example.ffridge.presentation.scan.ScanFoodActivity  // ← ĐÃ THAY ĐỔI
+import com.example.ffridge.presentation.scan.ScanFoodActivity
+import com.example.ffridge.presentation.recipe.RecipeActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -124,9 +125,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        // Nút "Scan Item" - ĐÃ THAY ĐỔI
+        // Nút "Scan Item"
         binding.btnBigScan.setOnClickListener {
-            startActivity(Intent(this, ScanFoodActivity::class.java))  // ← ĐÃ THAY ĐỔI
+            startActivity(Intent(this, ScanFoodActivity::class.java))
         }
 
         // Bottom Navigation
@@ -141,8 +142,8 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 R.id.nav_suggestions -> {
-                    // TODO: Mở màn hình suggestions
-                    Toast.makeText(this, "Suggestions coming soon!", Toast.LENGTH_SHORT).show()
+                    // MỞ MÀN HÌNH RECIPE
+                    startActivity(Intent(this, RecipeActivity::class.java))
                     true
                 }
                 R.id.nav_settings -> {

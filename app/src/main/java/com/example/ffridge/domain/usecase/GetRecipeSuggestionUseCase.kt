@@ -1,11 +1,12 @@
-package com.example.ffridge.domain.usecase.recipe
+package com.example.ffridge.domain.usecase
 
 import com.example.ffridge.domain.model.Recipe
 import com.example.ffridge.domain.repository.FoodRepository
 import com.example.ffridge.domain.repository.RecipeRepository
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-class GetRecipeSuggestionUseCase(
+class GetRecipeSuggestionUseCase @Inject constructor(
     private val foodRepository: FoodRepository,
     private val recipeRepository: RecipeRepository
 ) {

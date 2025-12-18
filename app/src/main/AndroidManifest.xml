@@ -32,7 +32,13 @@
             android:name=".presentation.scan.ScanFoodActivity"
             android:screenOrientation="portrait"
             android:exported="false" />
-        <activity android:name=".presentation.recipe.RecipeActivity" />
+        <activity android:name=".presentation.recipe.RecipeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".presentation.recipe.RecipeDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Ffridge" />
+
     </application>
 
 </manifest>

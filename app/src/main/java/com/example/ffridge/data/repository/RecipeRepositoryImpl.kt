@@ -1,5 +1,6 @@
 package com.example.ffridge.data.repository
 
+import com.example.ffridge.data.local.LocalRecipeDataSource
 import com.example.ffridge.data.mapper.toDomain
 import com.example.ffridge.data.mapper.toDomainList
 import com.example.ffridge.data.remote.RetrofitClient
@@ -16,16 +17,18 @@ class RecipeRepositoryImpl(
             if (response.isSuccessful && response.body() != null) {
                 val responseBody = response.body()!!
                 if (responseBody.recipes.isNotEmpty()) {
-                    // Lấy công thức đầu tiên và map sang Domain
                     Result.success(responseBody.recipes[0].toDomain())
                 } else {
-                    Result.failure(Exception("Không có công thức nào"))
+                    // Fallback local
+                    Result.success(LocalRecipeDataSource.getPopularRecipes().random())
                 }
             } else {
-                Result.failure(Exception("Lỗi API: ${response.code()}"))
+                // Fallback local
+                Result.success(LocalRecipeDataSource.getPopularRecipes().random())
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // Fallback local khi lỗi API
+            Result.success(LocalRecipeDataSource.getPopularRecipes().random())
         }
     }
 
@@ -35,12 +38,20 @@ class RecipeRepositoryImpl(
             val response = apiService.findRecipesByIngredients(ingredientsString)
 
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!.toDomainList())
+                val apiRecipes = response.body()!!.toDomainList()
+                if (apiRecipes.isNotEmpty()) {
+                    Result.success(apiRecipes)
+                } else {
+                    // Fallback local
+                    Result.success(LocalRecipeDataSource.getPopularRecipes())
+                }
             } else {
-                Result.failure(Exception("Lỗi API: ${response.code()}"))
+                // Fallback local
+                Result.success(LocalRecipeDataSource.getPopularRecipes())
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // Fallback local khi lỗi API
+            Result.success(LocalRecipeDataSource.getPopularRecipes())
         }
     }
 }

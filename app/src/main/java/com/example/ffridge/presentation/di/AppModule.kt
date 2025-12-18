@@ -13,8 +13,9 @@ import com.example.ffridge.data.repository.RecipeRepositoryImpl
 import com.example.ffridge.domain.repository.FoodRepository
 import com.example.ffridge.domain.repository.NutritionRepository
 import com.example.ffridge.domain.repository.RecipeRepository
+import com.example.ffridge.domain.usecase.GetFoodsUseCase
+import com.example.ffridge.domain.usecase.GetRandomRecipeUseCase
 import com.example.ffridge.domain.usecase.food.*
-import com.example.ffridge.domain.usecase.recipe.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

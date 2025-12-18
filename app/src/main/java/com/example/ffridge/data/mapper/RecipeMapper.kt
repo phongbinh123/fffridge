@@ -9,10 +9,11 @@ fun RecipeDetail.toDomain(): Recipe {
     return Recipe(
         id = this.id,
         title = this.title,
-        // API trả về HTML hoặc text dài, ta có thể xử lý sơ ở đây nếu cần
-        instructions = this.instructions ?: "Không có hướng dẫn chi tiết.",
-        // Lấy danh sách tên nguyên liệu từ list object phức tạp
-        ingredients = this.extendedIngredients?.mapNotNull { it.originalString } ?: emptyList()
+        description = this.instructions ?: "No instructions available.",
+        ingredients = this.extendedIngredients?.mapNotNull { it.originalString } ?: emptyList(),
+        imageUrl = null,
+        cookingTime = "",
+        difficulty = "Medium"
     )
 }
 
@@ -21,9 +22,11 @@ fun RecipeSummary.toDomain(): Recipe {
     return Recipe(
         id = this.id,
         title = this.title,
-        instructions = "", // Summary thường không có hướng dẫn, cần gọi API chi tiết sau
+        description = "Click to view full recipe.",
         ingredients = emptyList(),
-        imageUrl = this.image // Giả sử Domain Model có trường ảnh
+        imageUrl = this.image,
+        cookingTime = "",
+        difficulty = "Easy"
     )
 }
 
